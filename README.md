@@ -46,7 +46,7 @@ Alle `/api/*`-Endpoints erfordern den Header `Authorization: Bearer <token>`
 | Methode | Pfad | Zweck |
 |---------|------|-------|
 | GET  | `/health` | Liveness-Check (ohne Auth) |
-| GET  | `/api/system` | Daemon- & Docker-Status |
+| GET  | `/api/system` | Daemon- & Docker-Status + erkanntes `memory_mb`/`disk_mb` des Hosts |
 | GET  | `/api/servers/{uuid}` | Container-Status (`running`/`exited`/`missing`) |
 | POST | `/api/servers/{uuid}/power` | Body `{"action":"start\|stop\|restart"}` |
 

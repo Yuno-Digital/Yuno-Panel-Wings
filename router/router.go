@@ -10,6 +10,7 @@ import (
 
 	"github.com/yuno/wings/config"
 	"github.com/yuno/wings/internal/docker"
+	"github.com/yuno/wings/internal/system"
 )
 
 // Version is the daemon version, surfaced via /api/system.
@@ -41,15 +42,29 @@ func (rt *Router) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleSystem reports daemon and Docker status.
+// handleSystem reports daemon status, Docker status and detected host resources
+// (total memory and disk) so the panel can auto-fill a node's capacity.
 func (rt *Router) handleSystem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	// Resource detection is best-effort: log failures but still respond.
+	memoryMB, err := system.MemoryMB()
+	if err != nil {
+		rt.log.Warn("failed to detect memory", "error", err)
+	}
+	diskMB, err := system.DiskMB(rt.cfg.DiskPath)
+	if err != nil {
+		rt.log.Warn("failed to detect disk", "error", err)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"version":      Version,
-		"os":           runtime.GOOS,
-		"arch":         runtime.GOARCH,
-		"docker_ok":    rt.docker.Available(ctx),
+		"version":        Version,
+		"os":             runtime.GOOS,
+		"arch":           runtime.GOARCH,
+		"docker_ok":      rt.docker.Available(ctx),
 		"docker_version": rt.docker.Version(ctx),
+		"memory_mb":      memoryMB,
+		"disk_mb":        diskMB,
 	})
 }
 

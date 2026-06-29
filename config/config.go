@@ -24,6 +24,8 @@ type Config struct {
 	PanelURL string `json:"panel_url"`
 	// DockerPrefix is prepended to container names, e.g. "yuno" -> "yuno.<uuid>".
 	DockerPrefix string `json:"docker_prefix"`
+	// DiskPath is the filesystem path used to detect total disk capacity.
+	DiskPath string `json:"disk_path"`
 }
 
 // Default returns a config populated with sensible defaults and a fresh token.
@@ -34,6 +36,7 @@ func Default() *Config {
 		APIPort:      8080,
 		PanelURL:     "http://localhost:8000",
 		DockerPrefix: "yuno",
+		DiskPath:     "/",
 	}
 }
 
