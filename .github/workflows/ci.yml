@@ -17,7 +17,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: true
+          # No external dependencies (no go.sum), so module caching is a no-op.
+          cache: false
 
       - name: Check formatting
         run: |
