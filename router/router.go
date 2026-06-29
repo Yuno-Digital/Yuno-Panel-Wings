@@ -1,0 +1,113 @@
+// Package router wires the daemon's HTTP API: a small net/http mux with a
+// Bearer-token auth middleware and handlers for system info and server power.
+package router
+
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"runtime"
+
+	"github.com/yuno/wings/config"
+	"github.com/yuno/wings/internal/docker"
+)
+
+// Version is the daemon version, surfaced via /api/system.
+const Version = "0.1.0"
+
+// Router holds the dependencies shared by all handlers.
+type Router struct {
+	cfg    *config.Config
+	docker *docker.Client
+	log    *slog.Logger
+}
+
+// New builds a Router and returns an http.Handler with all routes registered.
+func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
+	rt := &Router{cfg: cfg, docker: dc, log: log}
+
+	mux := http.NewServeMux()
+	// Health check is intentionally unauthenticated.
+	mux.HandleFunc("GET /health", rt.handleHealth)
+	mux.Handle("GET /api/system", rt.auth(http.HandlerFunc(rt.handleSystem)))
+	mux.Handle("GET /api/servers/{uuid}", rt.auth(http.HandlerFunc(rt.handleServerStatus)))
+	mux.Handle("POST /api/servers/{uuid}/power", rt.auth(http.HandlerFunc(rt.handlePower)))
+
+	return logRequests(log, mux)
+}
+
+// handleHealth is a simple liveness probe.
+func (rt *Router) handleHealth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleSystem reports daemon and Docker status.
+func (rt *Router) handleSystem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"version":      Version,
+		"os":           runtime.GOOS,
+		"arch":         runtime.GOARCH,
+		"docker_ok":    rt.docker.Available(ctx),
+		"docker_version": rt.docker.Version(ctx),
+	})
+}
+
+// handleServerStatus returns the Docker state for a single server.
+func (rt *Router) handleServerStatus(w http.ResponseWriter, r *http.Request) {
+	uuid := r.PathValue("uuid")
+	state, err := rt.docker.State(r.Context(), uuid)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"uuid": uuid, "state": state})
+}
+
+// powerRequest is the body of a power action request.
+type powerRequest struct {
+	Action string `json:"action"` // start | stop | restart
+}
+
+// handlePower performs a start/stop/restart on a server's container.
+func (rt *Router) handlePower(w http.ResponseWriter, r *http.Request) {
+	uuid := r.PathValue("uuid")
+
+	var req powerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	ctx := r.Context()
+	var err error
+	switch req.Action {
+	case "start":
+		err = rt.docker.Start(ctx, uuid)
+	case "stop":
+		err = rt.docker.Stop(ctx, uuid)
+	case "restart":
+		err = rt.docker.Restart(ctx, uuid)
+	default:
+		writeError(w, http.StatusBadRequest, "action must be start, stop or restart")
+		return
+	}
+
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"uuid": uuid, "action": req.Action})
+}
+
+// writeJSON serializes v as a JSON response with the given status.
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// writeError writes a JSON error body.
+func writeError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]string{"error": msg})
+}
