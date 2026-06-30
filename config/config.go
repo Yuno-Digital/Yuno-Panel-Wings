@@ -26,6 +26,8 @@ type Config struct {
 	DockerPrefix string `json:"docker_prefix"`
 	// DiskPath is the filesystem path used to detect total disk capacity.
 	DiskPath string `json:"disk_path"`
+	// DataPath is the base directory holding each server's files/volume.
+	DataPath string `json:"data_path"`
 }
 
 // Default returns a config populated with sensible defaults and a fresh token.
@@ -37,6 +39,7 @@ func Default() *Config {
 		PanelURL:     "http://localhost:8000",
 		DockerPrefix: "yuno",
 		DiskPath:     "/",
+		DataPath:     "/var/lib/yuno/servers",
 	}
 }
 

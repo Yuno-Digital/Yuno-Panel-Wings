@@ -10,29 +10,37 @@ import (
 
 	"github.com/yuno/wings/config"
 	"github.com/yuno/wings/internal/docker"
+	"github.com/yuno/wings/internal/files"
 	"github.com/yuno/wings/internal/system"
 )
 
 // Version is the daemon version, surfaced via /api/system.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // Router holds the dependencies shared by all handlers.
 type Router struct {
 	cfg    *config.Config
 	docker *docker.Client
+	files  *files.Manager
 	log    *slog.Logger
 }
 
 // New builds a Router and returns an http.Handler with all routes registered.
 func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
-	rt := &Router{cfg: cfg, docker: dc, log: log}
+	rt := &Router{cfg: cfg, docker: dc, files: files.New(cfg.DataPath), log: log}
 
 	mux := http.NewServeMux()
 	// Health check is intentionally unauthenticated.
 	mux.HandleFunc("GET /health", rt.handleHealth)
 	mux.Handle("GET /api/system", rt.auth(http.HandlerFunc(rt.handleSystem)))
 	mux.Handle("GET /api/servers/{uuid}", rt.auth(http.HandlerFunc(rt.handleServerStatus)))
+	mux.Handle("POST /api/servers/{uuid}", rt.auth(http.HandlerFunc(rt.handleCreate)))
 	mux.Handle("POST /api/servers/{uuid}/power", rt.auth(http.HandlerFunc(rt.handlePower)))
+	mux.Handle("GET /api/servers/{uuid}/stats", rt.auth(http.HandlerFunc(rt.handleStats)))
+	mux.Handle("GET /api/servers/{uuid}/logs", rt.auth(http.HandlerFunc(rt.handleLogs)))
+	mux.Handle("GET /api/servers/{uuid}/files", rt.auth(http.HandlerFunc(rt.handleFileList)))
+	mux.Handle("GET /api/servers/{uuid}/files/contents", rt.auth(http.HandlerFunc(rt.handleFileRead)))
+	mux.Handle("POST /api/servers/{uuid}/files/write", rt.auth(http.HandlerFunc(rt.handleFileWrite)))
 
 	return logRequests(log, mux)
 }
