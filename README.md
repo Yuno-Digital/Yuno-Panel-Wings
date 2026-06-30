@@ -48,7 +48,13 @@ Alle `/api/*`-Endpoints erfordern den Header `Authorization: Bearer <token>`
 | GET  | `/health` | Liveness-Check (ohne Auth) |
 | GET  | `/api/system` | Daemon- & Docker-Status + erkanntes `memory_mb`/`disk_mb` des Hosts |
 | GET  | `/api/servers/{uuid}` | Container-Status (`running`/`exited`/`missing`) |
+| POST | `/api/servers/{uuid}` | Container (neu) erstellen — Body `{image, command, memory_mb, swap_mb, cpu, ports[], env{}}` |
 | POST | `/api/servers/{uuid}/power` | Body `{"action":"start\|stop\|restart"}` |
+| GET  | `/api/servers/{uuid}/stats` | Ressourcen-Snapshot (state, cpu_percent, memory_mb) |
+| GET  | `/api/servers/{uuid}/logs?lines=N` | Letzte Container-Logzeilen |
+| GET  | `/api/servers/{uuid}/files?path=/` | Verzeichnis auflisten |
+| GET  | `/api/servers/{uuid}/files/contents?path=…` | Datei lesen |
+| POST | `/api/servers/{uuid}/files/write` | Datei schreiben — Body `{path, contents}` |
 
 ### Beispiel
 
