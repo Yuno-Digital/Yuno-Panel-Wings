@@ -1,0 +1,16 @@
+# VCS & CI
+.git
+.github
+
+# Secrets / runtime state — never bake these into the image
+config.json
+
+# Compiled binaries
+yuno-wings
+wings
+/out
+
+# Docs & editor cruft
+*.md
+.gitignore
+.DS_Store
