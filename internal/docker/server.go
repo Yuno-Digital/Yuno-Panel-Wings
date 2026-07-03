@@ -51,7 +51,7 @@ func (c *Client) Create(ctx context.Context, uuid string, spec CreateSpec) error
 		}
 	}
 
-	args := []string{"create", "--name", name, "-i", "-w", "/home/container"}
+	args := []string{"create", "--name", name, "-i", "-w", "/home/container", "--user", currentUser()}
 
 	if spec.MemoryMB > 0 {
 		args = append(args, "--memory", fmt.Sprintf("%dm", spec.MemoryMB))
@@ -132,6 +132,12 @@ func (c *Client) Logs(ctx context.Context, uuid string, lines int) (string, erro
 		return "", fmt.Errorf("docker logs: %s", strings.TrimSpace(string(out)))
 	}
 	return string(out), nil
+}
+
+// currentUser returns "uid:gid" of the daemon process, used to run containers
+// as the same user that owns the server volume so the server can write to it.
+func currentUser() string {
+	return fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
 }
 
 // parsePercent turns "12.34%" into 12.34.
