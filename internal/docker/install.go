@@ -46,8 +46,13 @@ func (c *Client) Install(ctx context.Context, uuid string, spec CreateSpec, log 
 			return err
 		}
 
+		// Normalise line endings: eggs imported from JSON often carry Windows
+		// CRLFs, which break shell parsing (\r seen as part of commands).
+		script := strings.ReplaceAll(spec.InstallScript, "\r\n", "\n")
+		script = strings.ReplaceAll(script, "\r", "\n")
+
 		scriptPath := filepath.Join(os.TempDir(), name+".install")
-		if err := os.WriteFile(scriptPath, []byte(spec.InstallScript), 0o755); err != nil {
+		if err := os.WriteFile(scriptPath, []byte(script), 0o755); err != nil {
 			return fmt.Errorf("write install script: %w", err)
 		}
 		defer os.Remove(scriptPath)
