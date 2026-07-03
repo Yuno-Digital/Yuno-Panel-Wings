@@ -134,6 +134,17 @@ func (c *Client) Logs(ctx context.Context, uuid string, lines int) (string, erro
 	return string(out), nil
 }
 
+// SendCommand writes a line to the server process's stdin (PID 1's fd 0),
+// e.g. to run a Minecraft console command like "say hi" or "stop".
+func (c *Client) SendCommand(ctx context.Context, uuid, command string) error {
+	cmd := exec.CommandContext(ctx, "docker", "exec", "-i", c.containerName(uuid), "sh", "-c", "cat > /proc/1/fd/0")
+	cmd.Stdin = strings.NewReader(command + "\n")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("send command: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // currentUser returns "uid:gid" of the daemon process, used to run containers
 // as the same user that owns the server volume so the server can write to it.
 func currentUser() string {
