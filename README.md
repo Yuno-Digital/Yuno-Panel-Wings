@@ -28,11 +28,25 @@ router/middleware.go  Bearer-Token-Auth + Request-Logging
 
 ```bash
 go build -o yuno-wings .
+```
 
+### Empfohlen: Auto Deploy vom Panel
+
+Im Panel unter **Admin → Nodes → <Node> → Auto Deploy** steht der fertige Befehl.
+Der Daemon holt sich seine Config **inkl. Token vom Panel** und schreibt `config.json` —
+der Token bleibt so über Neustarts hinweg stabil:
+
+```bash
+sudo yuno-wings configure --panel-url https://panel.example.com --token yuno_node_… --node 1
+./yuno-wings
+```
+
+### Alternativ: standalone
+
+```bash
 # Erster Start schreibt config.json (mit frischem Token) und beendet sich:
 ./yuno-wings
-
-# config.json prüfen (panel_url, ggf. api_port anpassen), dann erneut starten:
+# config.json prüfen, dann erneut starten:
 ./yuno-wings
 ```
 
