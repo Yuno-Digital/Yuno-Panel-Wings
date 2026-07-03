@@ -21,7 +21,7 @@ import (
 func main() {
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	// `yuno-wings configure --panel-url … --token … --node …` fetches this
+	// `yuno-wings configure --panel-url … --token … --node …` fetches this.
 	// node's config (including the panel-owned token) and writes config.json.
 	if len(os.Args) > 1 && os.Args[1] == "configure" {
 		if err := runConfigure(os.Args[2:]); err != nil {
