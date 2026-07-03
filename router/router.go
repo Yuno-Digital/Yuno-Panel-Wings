@@ -15,7 +15,7 @@ import (
 )
 
 // Version is the daemon version, surfaced via /api/system.
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 // Router holds the dependencies shared by all handlers.
 type Router struct {
@@ -46,6 +46,7 @@ func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
 	mux.Handle("GET /api/servers/{uuid}/files", rt.auth(http.HandlerFunc(rt.handleFileList)))
 	mux.Handle("GET /api/servers/{uuid}/files/contents", rt.auth(http.HandlerFunc(rt.handleFileRead)))
 	mux.Handle("POST /api/servers/{uuid}/files/write", rt.auth(http.HandlerFunc(rt.handleFileWrite)))
+	mux.Handle("POST /api/servers/{uuid}/files/delete", rt.auth(http.HandlerFunc(rt.handleFileDelete)))
 
 	return logRequests(log, mux)
 }

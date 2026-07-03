@@ -150,3 +150,22 @@ func (rt *Router) handleFileWrite(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "saved"})
 }
+
+// handleFileDelete removes one or more files/directories.
+func (rt *Router) handleFileDelete(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Paths []string `json:"paths"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	uuid := r.PathValue("uuid")
+	for _, path := range body.Paths {
+		if err := rt.files.Delete(uuid, path); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "deleted", "count": len(body.Paths)})
+}

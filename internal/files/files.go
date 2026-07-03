@@ -78,6 +78,23 @@ func (m *Manager) List(uuid, rel string) ([]Entry, error) {
 	return entries, nil
 }
 
+// Delete removes a file or directory (recursively) inside the server dir. It
+// refuses to delete the server root itself.
+func (m *Manager) Delete(uuid, rel string) error {
+	path, err := m.resolve(uuid, rel)
+	if err != nil {
+		return err
+	}
+	root, err := filepath.Abs(filepath.Join(m.Base, uuid))
+	if err != nil {
+		return err
+	}
+	if path == root {
+		return fmt.Errorf("refusing to delete the server root")
+	}
+	return os.RemoveAll(path)
+}
+
 // Read returns the contents of a file (capped at maxReadBytes).
 func (m *Manager) Read(uuid, rel string) (string, error) {
 	path, err := m.resolve(uuid, rel)
