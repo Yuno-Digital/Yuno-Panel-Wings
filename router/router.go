@@ -15,7 +15,7 @@ import (
 )
 
 // Version is the daemon version, surfaced via /api/system.
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 // Router holds the dependencies shared by all handlers.
 type Router struct {
@@ -40,6 +40,9 @@ func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
 	mux.Handle("GET /api/servers/{uuid}/stats", rt.auth(http.HandlerFunc(rt.handleStats)))
 	mux.Handle("GET /api/servers/{uuid}/logs", rt.auth(http.HandlerFunc(rt.handleLogs)))
 	mux.Handle("GET /api/servers/{uuid}/install-log", rt.auth(http.HandlerFunc(rt.handleInstallLog)))
+	// The console websocket authenticates in-band with a panel-issued token,
+	// so it is not wrapped in the Bearer-token middleware.
+	mux.HandleFunc("GET /api/servers/{uuid}/ws", rt.handleWS)
 	mux.Handle("GET /api/servers/{uuid}/files", rt.auth(http.HandlerFunc(rt.handleFileList)))
 	mux.Handle("GET /api/servers/{uuid}/files/contents", rt.auth(http.HandlerFunc(rt.handleFileRead)))
 	mux.Handle("POST /api/servers/{uuid}/files/write", rt.auth(http.HandlerFunc(rt.handleFileWrite)))
