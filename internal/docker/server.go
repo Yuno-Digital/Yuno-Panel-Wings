@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -132,6 +133,16 @@ func (c *Client) Logs(ctx context.Context, uuid string, lines int) (string, erro
 		return "", fmt.Errorf("docker logs: %s", strings.TrimSpace(string(out)))
 	}
 	return string(out), nil
+}
+
+// StreamLogs follows the container's live output, copying it to w until the
+// container stops or ctx is cancelled. Only new output is emitted (--tail 0),
+// so a caller can send the historical tail separately without duplication.
+func (c *Client) StreamLogs(ctx context.Context, uuid string, w io.Writer) error {
+	cmd := exec.CommandContext(ctx, "docker", "logs", "-f", "--tail", "0", c.containerName(uuid))
+	cmd.Stdout = w
+	cmd.Stderr = w
+	return cmd.Run()
 }
 
 // SendCommand writes a line to the server process's stdin (PID 1's fd 0),
