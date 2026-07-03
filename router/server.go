@@ -1,10 +1,12 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/yuno/wings/internal/docker"
 )
@@ -25,11 +27,20 @@ func (rt *Router) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	spec.VolumePath = filepath.Join(rt.cfg.DataPath, uuid)
 
-	if err := rt.docker.Create(r.Context(), uuid, spec); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]string{"uuid": uuid, "status": "created"})
+	// Install in the background: pulling the image can take minutes and must
+	// not be cancelled when the panel's request times out or disconnects.
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+
+		if err := rt.docker.Create(ctx, uuid, spec); err != nil {
+			rt.log.Error("install failed", "uuid", uuid, "error", err)
+			return
+		}
+		rt.log.Info("server installed", "uuid", uuid)
+	}()
+
+	writeJSON(w, http.StatusAccepted, map[string]string{"uuid": uuid, "status": "installing"})
 }
 
 // handleStats returns a resource snapshot for the server.
