@@ -59,7 +59,7 @@ func (c *Client) Install(ctx context.Context, uuid string, spec CreateSpec, log 
 
 		stamp("Running install script with %s", entry)
 		args := []string{
-			"run", "--rm", "--entrypoint", entry,
+			"run", "--rm", "--user", currentUser(), "--entrypoint", entry,
 			"-v", spec.VolumePath + ":/mnt/server",
 			"-v", scriptPath + ":/mnt/install.sh:ro",
 			"-w", "/mnt/server",
