@@ -69,7 +69,14 @@ func (c *Client) Create(ctx context.Context, uuid string, spec CreateSpec) error
 		args = append(args, "sh", "-c", spec.Command)
 	}
 
-	return c.run(ctx, args...)
+	// Run with the caller's context directly (no short timeout): creating a
+	// container may pull a large image, which can take minutes.
+	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker create: %s", strings.TrimSpace(string(out)))
+	}
+
+	return nil
 }
 
 // Stats returns a resource snapshot for the server's container.
