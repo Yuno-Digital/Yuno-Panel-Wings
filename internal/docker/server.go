@@ -21,6 +21,12 @@ type CreateSpec struct {
 	Ports      []int             `json:"ports"`
 	Env        map[string]string `json:"env"`
 	VolumePath string            `json:"-"` // host path bind-mounted into the container
+
+	// Install script from the egg, run in InstallContainer with the server
+	// volume mounted at /mnt/server before the game container is created.
+	InstallScript    string `json:"install_script"`
+	InstallContainer string `json:"install_container"`
+	InstallEntry     string `json:"install_entry"`
 }
 
 // Stats is a point-in-time resource snapshot for a server.

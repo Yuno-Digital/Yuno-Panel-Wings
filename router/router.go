@@ -38,6 +38,7 @@ func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
 	mux.Handle("POST /api/servers/{uuid}/power", rt.auth(http.HandlerFunc(rt.handlePower)))
 	mux.Handle("GET /api/servers/{uuid}/stats", rt.auth(http.HandlerFunc(rt.handleStats)))
 	mux.Handle("GET /api/servers/{uuid}/logs", rt.auth(http.HandlerFunc(rt.handleLogs)))
+	mux.Handle("GET /api/servers/{uuid}/install-log", rt.auth(http.HandlerFunc(rt.handleInstallLog)))
 	mux.Handle("GET /api/servers/{uuid}/files", rt.auth(http.HandlerFunc(rt.handleFileList)))
 	mux.Handle("GET /api/servers/{uuid}/files/contents", rt.auth(http.HandlerFunc(rt.handleFileRead)))
 	mux.Handle("POST /api/servers/{uuid}/files/write", rt.auth(http.HandlerFunc(rt.handleFileWrite)))
