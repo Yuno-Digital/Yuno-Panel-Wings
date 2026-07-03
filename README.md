@@ -59,6 +59,30 @@ router/middleware.go    Bearer-Token-Auth + Request-Logging
 go build -o yuno-wings .
 ```
 
+## Docker (GitHub Package)
+
+Ein fertiges Image wird per CI nach dem **GitHub Container Registry** gepusht:
+`ghcr.io/yuno-digital/yuno-panel-wings` (`latest` sowie pro Release ein
+versioniertes Tag). Der Daemon steuert Docker über die CLI und den Socket des
+Hosts – dieser muss gemountet werden, und `data_path` muss host- und
+containerseitig **derselbe Pfad** sein (Bind-Mounts werden vom Host-Docker
+aufgelöst).
+
+```bash
+# Einmalig konfigurieren (schreibt /etc/yuno/config.json):
+docker run --rm -v /etc/yuno:/etc/yuno \
+  ghcr.io/yuno-digital/yuno-panel-wings:latest \
+  configure --panel-url https://panel.example.com --token yuno_node_… --node 1
+
+# Daemon starten:
+docker run -d --name yuno-wings --restart unless-stopped \
+  -p 8080:8080 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /etc/yuno:/etc/yuno \
+  -v /var/lib/yuno:/var/lib/yuno \
+  ghcr.io/yuno-digital/yuno-panel-wings:latest
+```
+
 ## Einrichten & Starten
 
 ### Empfohlen: Auto Deploy vom Panel
