@@ -1,5 +1,6 @@
-# Compiled binary
+# Compiled binaries
 /yuno-wings
+/wings
 
 # Local daemon config (contains the node token)
 /config.json
