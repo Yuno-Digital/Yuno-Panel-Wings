@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -27,13 +28,26 @@ func (rt *Router) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	spec.VolumePath = filepath.Join(rt.cfg.DataPath, uuid)
 
-	// Install in the background: pulling the image can take minutes and must
-	// not be cancelled when the panel's request times out or disconnects.
+	logPath := rt.installLogPath(uuid)
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Install in the background: pulling images and running the install script
+	// can take minutes and must not be cancelled when the panel's request
+	// times out or disconnects. Output is streamed to the install log.
 	go func() {
+		defer logFile.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
 
-		if err := rt.docker.Create(ctx, uuid, spec); err != nil {
+		if err := rt.docker.Install(ctx, uuid, spec, logFile); err != nil {
 			rt.log.Error("install failed", "uuid", uuid, "error", err)
 			return
 		}
@@ -41,6 +55,21 @@ func (rt *Router) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	writeJSON(w, http.StatusAccepted, map[string]string{"uuid": uuid, "status": "installing"})
+}
+
+// installLogPath returns the file the install output is streamed to.
+func (rt *Router) installLogPath(uuid string) string {
+	return filepath.Join(rt.cfg.DataPath, ".install-logs", uuid+".log")
+}
+
+// handleInstallLog returns the install log for a server.
+func (rt *Router) handleInstallLog(w http.ResponseWriter, r *http.Request) {
+	data, err := os.ReadFile(rt.installLogPath(r.PathValue("uuid")))
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]string{"log": ""})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"log": string(data)})
 }
 
 // handleStats returns a resource snapshot for the server.
