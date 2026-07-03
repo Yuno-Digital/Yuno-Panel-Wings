@@ -15,7 +15,7 @@ import (
 )
 
 // Version is the daemon version, surfaced via /api/system.
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 // Router holds the dependencies shared by all handlers.
 type Router struct {

@@ -8,7 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -81,6 +83,7 @@ func (rt *Router) handleWS(w http.ResponseWriter, r *http.Request) {
 	rt.pushStatus(ctx, uuid, send)
 	go rt.streamStats(ctx, uuid, send)
 	go rt.streamConsole(ctx, uuid, send)
+	go rt.streamInstallLog(ctx, uuid, send)
 
 	// Read loop: commands and power actions coming from the browser.
 	for {
@@ -174,6 +177,62 @@ func (rt *Router) streamConsole(ctx context.Context, uuid string, send func(stri
 		// Blocks until the container stops or ctx is cancelled.
 		_ = rt.docker.StreamLogs(ctx, uuid, w)
 	}
+}
+
+// streamInstallLog follows the server's install log file and forwards new
+// content to the console, so installation output (image pull + install script)
+// appears inline just like Pelican. On an already-installed server the existing
+// log is skipped; a fresh (re)install truncates the file and is streamed whole.
+func (rt *Router) streamInstallLog(ctx context.Context, uuid string, send func(string, ...string)) {
+	path := rt.installLogPath(uuid)
+
+	var offset int64
+	if state, _ := rt.docker.State(ctx, uuid); state != "missing" {
+		if info, err := os.Stat(path); err == nil {
+			offset = info.Size()
+		}
+	}
+
+	t := time.NewTicker(700 * time.Millisecond)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			info, err := os.Stat(path)
+			if err != nil {
+				continue // no install has run yet
+			}
+			size := info.Size()
+			if size < offset {
+				offset = 0 // file was recreated for a new install
+			}
+			if size == offset {
+				continue
+			}
+			if data := readChunk(path, offset, size-offset); len(data) > 0 {
+				send("console output", string(data))
+			}
+			offset = size
+		}
+	}
+}
+
+// readChunk reads up to n bytes from path starting at off, returning nil on any
+// error (the follower simply retries on the next tick).
+func readChunk(path string, off, n int64) []byte {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	if _, err := f.Seek(off, io.SeekStart); err != nil {
+		return nil
+	}
+	buf := make([]byte, n)
+	read, _ := io.ReadFull(f, buf)
+	return buf[:read]
 }
 
 // verifyWSToken validates a panel-issued HS256 JWT and returns its "server"
