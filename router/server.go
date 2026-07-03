@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/yuno/wings/internal/docker"
@@ -70,6 +71,26 @@ func (rt *Router) handleInstallLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"log": string(data)})
+}
+
+// handleCommand sends a console command to the running server.
+func (rt *Router) handleCommand(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Command string `json:"command"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if strings.TrimSpace(body.Command) == "" {
+		writeError(w, http.StatusBadRequest, "command is required")
+		return
+	}
+	if err := rt.docker.SendCommand(r.Context(), r.PathValue("uuid"), body.Command); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "sent"})
 }
 
 // handleStats returns a resource snapshot for the server.
