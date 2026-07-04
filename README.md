@@ -70,6 +70,21 @@ Ohne Parameter fragt das Script interaktiv nach Panel-URL, Node-ID und Token:
 curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash
 ```
 
+**HTTPS automatisch:** Gib eine Domain an (die per DNS auf diesen Host zeigt) —
+das Script prüft den DNS-Record, holt per **certbot** (standalone) ein
+**Let's-Encrypt-Zertifikat**, trägt `ssl_cert`/`ssl_key` in die `config.json` ein
+und richtet die automatische Erneuerung inkl. Daemon-Neustart ein. Interaktiv
+wird auch danach gefragt.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash -s -- \
+    --panel-url https://panel.example.com --token yuno_node_… --node 1 \
+    --domain node01.example.com --ssl-email you@example.com
+```
+
+Danach im Panel den Node auf **„Use HTTPS (TLS)"**, die Domain als FQDN und Port
+`8090` setzen. (Port 80 muss für die Zertifikatsprüfung kurz frei/erreichbar sein.)
+
 Danach läuft der Daemon dauerhaft. Nützliche Befehle:
 
 ```bash
