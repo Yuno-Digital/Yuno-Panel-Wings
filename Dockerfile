@@ -18,6 +18,6 @@ COPY --from=build /out/yuno-wings /usr/local/bin/yuno-wings
 # Config (config.json) and server data live under /etc/yuno.
 WORKDIR /etc/yuno
 VOLUME ["/etc/yuno"]
-EXPOSE 8080
+EXPOSE 8090
 
 ENTRYPOINT ["yuno-wings"]

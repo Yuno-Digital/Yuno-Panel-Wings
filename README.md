@@ -77,7 +77,7 @@ systemctl status yuno-wings      # Status
 journalctl -u yuno-wings -f      # Live-Logs
 ```
 
-Öffne ggf. die Firewall für den API-Port (Default `8080`), damit das Panel den
+Öffne ggf. die Firewall für den API-Port (Default `8090`), damit das Panel den
 Host erreicht.
 
 ## Bauen
@@ -103,7 +103,7 @@ docker run --rm -v /etc/yuno:/etc/yuno \
 
 # Daemon starten:
 docker run -d --name yuno-wings --restart unless-stopped \
-  -p 8080:8080 \
+  -p 8090:8090 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /etc/yuno:/etc/yuno \
   -v /var/lib/yuno:/var/lib/yuno \
@@ -133,20 +133,37 @@ Daemon-User kann sie nicht lesen:
 ./yuno-wings
 ```
 
-Der Daemon lauscht standardmäßig auf `0.0.0.0:8080`.
+Der Daemon lauscht standardmäßig auf `0.0.0.0:8090`.
 
 ## Konfiguration (`config.json`)
 
 | Feld | Zweck |
 |------|-------|
 | `token` | Shared Secret, das das Panel als Bearer-Token präsentiert |
-| `api_host` / `api_port` | Bind-Adresse der HTTP-API (Default `0.0.0.0:8080`) |
+| `api_host` / `api_port` | Bind-Adresse der HTTP-API (Default `0.0.0.0:8090`) |
 | `panel_url` | Basis-URL des zugehörigen Panels |
 | `docker_prefix` | Präfix der Container-Namen (`yuno` → `yuno.<uuid>`) |
 | `disk_path` | Pfad zur Disk-Kapazitätserkennung |
 | `data_path` | Basisverzeichnis der Server-Volumes (Default `/var/lib/yuno/servers`) |
+| `ssl_cert` / `ssl_key` | Pfade zu PEM-Zertifikat und -Key. Sind **beide** gesetzt, läuft die API über **HTTPS** statt HTTP |
 
 > `config.json` enthält das Secret und ist per `.gitignore` ausgeschlossen — niemals committen.
+
+### SSL / HTTPS
+
+Standardmäßig läuft die API über HTTP. Für HTTPS trägst du in `config.json` die
+Pfade zu einem Zertifikat und Key ein (z. B. ein Let's-Encrypt-Cert oder ein
+selbstsigniertes) und startest den Daemon neu:
+
+```json
+{
+  "ssl_cert": "/etc/yuno/certs/fullchain.pem",
+  "ssl_key":  "/etc/yuno/certs/privkey.pem"
+}
+```
+
+Der Daemon-User muss beide Dateien lesen können. Im Panel muss der Node dann auf
+**HTTPS** (mit passendem FQDN, der zum Zertifikat passt) und den API-Port zeigen.
 
 ## API
 
@@ -175,9 +192,9 @@ kurzlebigem JWT** authentifiziert (vom Panel mit dem Node-Token signiert).
 
 ```bash
 TOKEN=$(grep -oP '"token":\s*"\K[^"]+' config.json)
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/system
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8090/api/system
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-     -d '{"action":"start"}' http://localhost:8080/api/servers/<uuid>/power
+     -d '{"action":"start"}' http://localhost:8090/api/servers/<uuid>/power
 ```
 
 ## Hinweise / Troubleshooting

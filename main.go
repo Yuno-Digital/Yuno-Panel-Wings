@@ -54,10 +54,17 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	// Run the server until we receive an interrupt/terminate signal.
+	// Run the server until we receive an interrupt/terminate signal. Serve over
+	// HTTPS when a certificate and key are configured, otherwise plain HTTP.
 	go func() {
-		log.Info("yuno-wings listening", "address", cfg.Address(), "version", router.Version)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Info("yuno-wings listening", "address", cfg.Address(), "scheme", cfg.Scheme(), "version", router.Version)
+		var err error
+		if cfg.TLSEnabled() {
+			err = srv.ListenAndServeTLS(cfg.SSLCert, cfg.SSLKey)
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server error", "error", err)
 			os.Exit(1)
 		}

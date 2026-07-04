@@ -164,7 +164,7 @@ $SUDO systemctl enable --now yuno-wings >/dev/null 2>&1 || $SUDO systemctl resta
 # --- Health check ------------------------------------------------------------
 sleep 2
 PORT="$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONF/config.json" 2>/dev/null | grep -o '[0-9]*$' || true)"
-PORT="${PORT:-8080}"
+PORT="${PORT:-8090}"
 if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
     log "Daemon is up and healthy on port ${PORT}."
 else
