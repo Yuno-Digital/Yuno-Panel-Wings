@@ -53,6 +53,33 @@ router/middleware.go    Bearer-Token-Auth + Request-Logging
   sudo mkdir -p /var/lib/yuno && sudo chown $USER /var/lib/yuno
   ```
 
+## Schnellinstallation (Debian/Ubuntu)
+
+Installiert **Docker** und **Go**, baut den Daemon, konfiguriert ihn gegen dein
+Panel und richtet ihn als **systemd-Dienst** (`yuno-wings`) ein. Die Parameter
+findest du im Panel unter **Admin → Nodes → \<Node\> → Auto Deploy**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash -s -- \
+    --panel-url https://panel.example.com --token yuno_node_… --node 1
+```
+
+Ohne Parameter fragt das Script interaktiv nach Panel-URL, Node-ID und Token:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash
+```
+
+Danach läuft der Daemon dauerhaft. Nützliche Befehle:
+
+```bash
+systemctl status yuno-wings      # Status
+journalctl -u yuno-wings -f      # Live-Logs
+```
+
+Öffne ggf. die Firewall für den API-Port (Default `8080`), damit das Panel den
+Host erreicht.
+
 ## Bauen
 
 ```bash
