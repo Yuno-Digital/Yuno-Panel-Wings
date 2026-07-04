@@ -28,6 +28,10 @@ type Config struct {
 	DiskPath string `json:"disk_path"`
 	// DataPath is the base directory holding each server's files/volume.
 	DataPath string `json:"data_path"`
+	// SSLCert and SSLKey point to a PEM certificate and private key. When both
+	// are set, the API is served over HTTPS instead of plain HTTP.
+	SSLCert string `json:"ssl_cert"`
+	SSLKey  string `json:"ssl_key"`
 }
 
 // Default returns a config populated with sensible defaults and a fresh token.
@@ -35,7 +39,7 @@ func Default() *Config {
 	return &Config{
 		Token:        randomToken(),
 		APIHost:      "0.0.0.0",
-		APIPort:      8080,
+		APIPort:      8090,
 		PanelURL:     "http://localhost:8000",
 		DockerPrefix: "yuno",
 		DiskPath:     "/",
@@ -77,6 +81,20 @@ func (c *Config) Save(path string) error {
 // Address returns the host:port the API should bind to.
 func (c *Config) Address() string {
 	return fmt.Sprintf("%s:%d", c.APIHost, c.APIPort)
+}
+
+// TLSEnabled reports whether both a certificate and key are configured, in
+// which case the API is served over HTTPS.
+func (c *Config) TLSEnabled() bool {
+	return c.SSLCert != "" && c.SSLKey != ""
+}
+
+// Scheme returns "https" when TLS is enabled, otherwise "http".
+func (c *Config) Scheme() string {
+	if c.TLSEnabled() {
+		return "https"
+	}
+	return "http"
 }
 
 // randomToken returns a 32-byte hex-encoded random string.
