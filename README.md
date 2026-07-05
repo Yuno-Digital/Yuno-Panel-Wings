@@ -168,6 +168,7 @@ Der Daemon lauscht standardmäßig auf `0.0.0.0:8090`.
 | `disk_path` | Pfad zur Disk-Kapazitätserkennung |
 | `data_path` | Basisverzeichnis der Server-Volumes (Default `/var/lib/yuno/servers`) |
 | `backup_path` | Basisverzeichnis der Server-Backups (Default `/var/lib/yuno/backups`) |
+| `dns` | DNS-Resolver für die Container (Default `["1.1.1.1","8.8.8.8"]`) — nötig, da Container den `systemd-resolved`-Stub `127.0.0.53` nicht nutzen können |
 | `ssl_cert` / `ssl_key` | Pfade zu PEM-Zertifikat und -Key. Sind **beide** gesetzt, läuft die API über **HTTPS** statt HTTP |
 
 > `config.json` enthält das Secret und ist per `.gitignore` ausgeschlossen — niemals committen.

@@ -47,6 +47,9 @@ type Config struct {
 	DataPath string `json:"data_path"`
 	// BackupPath is the base directory where server backups are stored.
 	BackupPath string `json:"backup_path"`
+	// DNS are the resolver addresses passed to every container (containers can't
+	// use a systemd-resolved stub like 127.0.0.53, so we set explicit ones).
+	DNS []string `json:"dns"`
 	// SSLCert and SSLKey point to a PEM certificate and private key. When both
 	// are set, the API is served over HTTPS instead of plain HTTP.
 	SSLCert string `json:"ssl_cert"`
@@ -64,7 +67,18 @@ func Default() *Config {
 		DiskPath:     "/",
 		DataPath:     "/var/lib/yuno/servers",
 		BackupPath:   "/var/lib/yuno/backups",
+		DNS:          []string{"1.1.1.1", "8.8.8.8"},
 	}
+}
+
+// DNSServers returns the configured container DNS resolvers, falling back to
+// public ones when unset (older config files).
+func (c *Config) DNSServers() []string {
+	if len(c.DNS) > 0 {
+		return c.DNS
+	}
+
+	return []string{"1.1.1.1", "8.8.8.8"}
 }
 
 // Backups returns the configured backup directory, falling back to a sibling of

@@ -44,7 +44,7 @@ func main() {
 		return
 	}
 
-	dc := docker.New(cfg.DockerPrefix)
+	dc := docker.New(cfg.DockerPrefix, cfg.DNSServers())
 	if !dc.Available(context.Background()) {
 		log.Warn("docker is not reachable; power actions will fail until it is running")
 	}
