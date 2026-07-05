@@ -228,7 +228,10 @@ WantedBy=multi-user.target
 UNIT
 
 $SUDO systemctl daemon-reload
-$SUDO systemctl enable --now yuno-wings >/dev/null 2>&1 || $SUDO systemctl restart yuno-wings
+$SUDO systemctl enable yuno-wings >/dev/null 2>&1 || true
+# Always restart (not `enable --now`, which no-ops on an already-running service)
+# so a rebuild — e.g. from the panel's self-update — actually loads the new binary.
+$SUDO systemctl restart yuno-wings
 
 # --- Health check ------------------------------------------------------------
 sleep 2
