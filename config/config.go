@@ -9,8 +9,25 @@ import (
 	"os"
 )
 
-// DefaultPath is where the daemon looks for its config file.
+// DefaultPath is the fallback config location (relative to the working dir).
 const DefaultPath = "config.json"
+
+// systemDir is the standard config directory used by the installer/systemd unit.
+const systemDir = "/etc/yuno"
+
+// ResolvePath returns the config file path. It honours $YUNO_CONFIG, then the
+// system directory /etc/yuno (so `configure` and the daemon agree regardless of
+// the current working directory), and finally falls back to ./config.json for
+// dev and container runs.
+func ResolvePath() string {
+	if p := os.Getenv("YUNO_CONFIG"); p != "" {
+		return p
+	}
+	if info, err := os.Stat(systemDir); err == nil && info.IsDir() {
+		return systemDir + "/config.json"
+	}
+	return DefaultPath
+}
 
 // Config holds all runtime settings for the daemon.
 type Config struct {
