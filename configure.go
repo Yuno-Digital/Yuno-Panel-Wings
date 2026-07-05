@@ -57,6 +57,17 @@ func runConfigure(args []string) error {
 	// Remember where the panel lives for future reference.
 	cfg.PanelURL = strings.TrimRight(*panelURL, "/")
 
+	// Preserve host-local settings the panel doesn't know about (e.g. TLS cert
+	// paths set up on this host), so reconfiguring doesn't wipe them.
+	if existing, _, err := config.Load(config.DefaultPath); err == nil {
+		if cfg.SSLCert == "" {
+			cfg.SSLCert = existing.SSLCert
+		}
+		if cfg.SSLKey == "" {
+			cfg.SSLKey = existing.SSLKey
+		}
+	}
+
 	if err := cfg.Save(config.DefaultPath); err != nil {
 		return fmt.Errorf("writing config: %w", err)
 	}

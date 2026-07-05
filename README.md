@@ -55,26 +55,32 @@ router/middleware.go    Bearer-Token-Auth + Request-Logging
 
 ## Schnellinstallation (Debian/Ubuntu)
 
-Installiert **Docker** und **Go**, baut den Daemon, konfiguriert ihn gegen dein
-Panel und richtet ihn als **systemd-Dienst** (`yuno-wings`) ein. Die Parameter
-findest du im Panel unter **Admin → Nodes → \<Node\> → Auto Deploy**:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash -s -- \
-    --panel-url https://panel.example.com --token yuno_node_… --node 1
-```
-
-Ohne Parameter fragt das Script interaktiv nach Panel-URL, Node-ID und Token:
+Installiert **Docker** und **Go**, baut den Daemon und richtet ihn als
+**systemd-Dienst** (`yuno-wings`) mit Standard-Config ein:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash
 ```
 
-**HTTPS automatisch:** Gib eine Domain an (die per DNS auf diesen Host zeigt) —
-das Script prüft den DNS-Record, holt per **certbot** (standalone) ein
-**Let's-Encrypt-Zertifikat**, trägt `ssl_cert`/`ssl_key` in die `config.json` ein
-und richtet die automatische Erneuerung inkl. Daemon-Neustart ein. Interaktiv
-wird auch danach gefragt.
+**Node ans Panel anbinden:** Danach im Panel unter **Admin → Nodes → \<Node\> →
+Auto Deploy** den fertigen Befehl kopieren und auf dem Host ausführen — er holt
+die Config (inkl. Token) vom Panel, schreibt `config.json` und startet den
+Dienst neu:
+
+```bash
+cd /etc/yuno && sudo yuno-wings configure --panel-url https://panel.example.com \
+    --token yuno_node_… --node 1 && sudo systemctl restart yuno-wings
+```
+
+Öffne ggf. die Firewall für den API-Port (Default `8090`), damit das Panel den
+Host erreicht.
+
+### One-shot & HTTPS (optional)
+
+Wer alles in einem Rutsch will, kann Panel-Daten direkt an den Installer
+übergeben. Mit `--domain` (DNS muss auf den Host zeigen) holt er zusätzlich per
+**certbot** ein **Let's-Encrypt-Zertifikat**, trägt `ssl_cert`/`ssl_key` in die
+`config.json` ein und richtet die Auto-Erneuerung inkl. Daemon-Neustart ein:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh | bash -s -- \
@@ -82,10 +88,11 @@ curl -fsSL https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/
     --domain node01.example.com --ssl-email you@example.com
 ```
 
-Danach im Panel den Node auf **„Use HTTPS (TLS)"**, die Domain als FQDN und Port
-`8090` setzen. (Port 80 muss für die Zertifikatsprüfung kurz frei/erreichbar sein.)
+Bei HTTPS im Panel den Node auf **„Use HTTPS (TLS)"**, die Domain als FQDN und
+Port `8090` setzen. (Port 80 muss für die Zertifikatsprüfung kurz frei sein.)
+Ein späterer Auto-Deploy-Befehl behält die gesetzten `ssl_*`-Pfade bei.
 
-Danach läuft der Daemon dauerhaft. Nützliche Befehle:
+Nützliche Befehle:
 
 ```bash
 systemctl status yuno-wings      # Status

@@ -31,7 +31,10 @@ warn() { printf '\033[1;33m!  \033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mx  \033[0m %s\n' "$*" >&2; exit 1; }
 ask()  { local p="$1" v=""; printf '%s' "$p" >/dev/tty; read -r v </dev/tty || v=""; printf '%s' "$v"; }
 
-# --- Parse arguments (all optional; missing ones are prompted for) -----------
+# --- Parse arguments (all optional) ------------------------------------------
+# A plain run does a standard install; connect the node afterwards with the
+# Auto Deploy command from the panel. Flags below are for one-shot/automated
+# setups only.
 PANEL_URL="${PANEL_URL:-}"
 NODE_TOKEN="${NODE_TOKEN:-}"
 NODE_ID="${NODE_ID:-}"
@@ -63,16 +66,14 @@ domain_points_here() {
     return 1
 }
 
-# Obtain a Let's Encrypt certificate (certbot standalone, since the daemon
-# serves TLS itself) and point config.json at it. Sets FQDN for the summary.
+# Optional HTTPS: obtain a Let's Encrypt certificate (certbot standalone, since
+# the daemon serves TLS itself) and point config.json at it. Only runs when a
+# --domain was given; a standard install skips this entirely. Sets FQDN.
 FQDN=""
 setup_tls() {
-    # Skip entirely when non-interactive and no --domain was given.
-    if [ -z "$DOMAIN" ] && [ ! -e /dev/tty ]; then
-        return 0
-    fi
+    [ -n "$DOMAIN" ] || return 0
 
-    log "Installing certbot, jq and dig (for optional HTTPS)"
+    log "Installing certbot, jq and dig (for HTTPS)"
     $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot jq >/dev/null 2>&1 || true
     command -v dig >/dev/null 2>&1 \
         || $SUDO apt-get install -y -qq bind9-dnsutils >/dev/null 2>&1 \
@@ -80,34 +81,15 @@ setup_tls() {
 
     SERVER_IP4="$(curl -4 -fsSL --max-time 6 https://api.ipify.org 2>/dev/null || true)"
     SERVER_IP6="$(curl -6 -fsSL --max-time 6 https://api6.ipify.org 2>/dev/null || true)"
-    log "This server's public IP — IPv4: ${SERVER_IP4:-none} · IPv6: ${SERVER_IP6:-none}"
 
-    # Resolve a domain that points here (loop only when interactive).
-    while true; do
-        if [ -z "$DOMAIN" ]; then
-            [ -e /dev/tty ] || return 0
-            DOMAIN="$(ask 'Domain for this node — HTTPS (empty to skip, use plain HTTP): ')"
-            [ -z "$DOMAIN" ] && { warn "Skipping HTTPS — the node will serve plain HTTP."; return 0; }
-        fi
-
-        if domain_points_here "$DOMAIN"; then
-            log "$DOMAIN points to this server — continuing."
-            break
-        fi
-
-        warn "$DOMAIN does not resolve to this server."
+    if ! domain_points_here "$DOMAIN"; then
+        warn "$DOMAIN does not resolve to this server (IPv4: ${SERVER_IP4:-none}, IPv6: ${SERVER_IP6:-none})."
         warn "  $DOMAIN → A: $(dig +short A "$DOMAIN" 2>/dev/null | tr '\n' ' ')AAAA: $(dig +short AAAA "$DOMAIN" 2>/dev/null | tr '\n' ' ')"
-        if [ ! -e /dev/tty ]; then
-            warn "Point the DNS record at this server and re-run with --domain. Skipping HTTPS."
-            return 0
-        fi
-        case "$(ask 'Enter a different domain? [Y/n]: ')" in [Nn]*) return 0 ;; esac
-        DOMAIN=""
-    done
+        warn "  Point the DNS record here and re-run with --domain. Skipping HTTPS."
+        return 0
+    fi
 
     command -v jq >/dev/null 2>&1 || { warn "jq is not available — cannot write SSL paths. Skipping HTTPS."; return 0; }
-
-    [ -n "$SSL_EMAIL" ] || { [ -e /dev/tty ] && SSL_EMAIL="$(ask "Email for Let's Encrypt (empty = register without email): ")"; }
 
     log "Requesting a certificate for $DOMAIN (certbot standalone, port 80)"
     if [ -n "$SSL_EMAIL" ]; then
@@ -208,26 +190,17 @@ log "Installed binary at $BIN"
 # --- Directories -------------------------------------------------------------
 $SUDO mkdir -p "$CONF" "$DATA"
 
-# --- Configure against the panel --------------------------------------------
+# --- Config: standard install writes a default config; the panel's Auto Deploy
+#     command connects the node afterwards. Flags allow a one-shot configure. --
 if [ -f "$CONF/config.json" ]; then
     log "Existing config found at $CONF/config.json — keeping it (delete it to reconfigure)."
+elif [ -n "$PANEL_URL" ] && [ -n "$NODE_TOKEN" ] && [ -n "$NODE_ID" ]; then
+    log "Fetching node config from the panel"
+    $SUDO sh -c "cd '$CONF' && '$BIN' configure --panel-url '$PANEL_URL' --token '$NODE_TOKEN' --node '$NODE_ID'" \
+        || die "configure failed — check the panel URL, token and node id."
 else
-    if [ -z "$PANEL_URL$NODE_TOKEN$NODE_ID" ] && [ -e /dev/tty ]; then
-        log "Configure this node (from the panel: Admin → Nodes → your node → Auto Deploy)"
-        [ -n "$PANEL_URL" ]  || PANEL_URL="$(ask 'Panel URL (https://…): ')"
-        [ -n "$NODE_ID" ]    || NODE_ID="$(ask 'Node ID: ')"
-        [ -n "$NODE_TOKEN" ] || NODE_TOKEN="$(ask 'Node token (yuno_node_…): ')"
-    fi
-
-    if [ -n "$PANEL_URL" ] && [ -n "$NODE_TOKEN" ] && [ -n "$NODE_ID" ]; then
-        log "Fetching node config from the panel"
-        $SUDO sh -c "cd '$CONF' && '$BIN' configure --panel-url '$PANEL_URL' --token '$NODE_TOKEN' --node '$NODE_ID'" \
-            || die "configure failed — check the panel URL, token and node id."
-    else
-        warn "No panel details given — generating a default config.json instead."
-        $SUDO sh -c "cd '$CONF' && '$BIN' >/dev/null 2>&1 || true"
-        warn "Edit $CONF/config.json (set panel_url) or re-run: $BIN configure --panel-url … --token … --node …"
-    fi
+    log "Writing a default config.json (connect the node with the panel command below)"
+    $SUDO sh -c "cd '$CONF' && '$BIN' >/dev/null 2>&1 || true"
 fi
 
 # --- Optional HTTPS (Let's Encrypt) -----------------------------------------
@@ -275,10 +248,19 @@ else
 fi
 
 echo
-log "Done. Useful commands:"
-echo "    systemctl status yuno-wings        # service status"
-echo "    journalctl -u yuno-wings -f         # live logs"
-echo "    $BIN configure --panel-url … --token … --node …   # reconfigure"
+# Whether the node is already pointed at a real panel (vs. the default config).
+if grep -q '"panel_url"[[:space:]]*:[[:space:]]*"http://localhost' "$CONF/config.json" 2>/dev/null; then
+    log "Standard install complete. Connect this node to your panel:"
+    echo "    → In the panel: Admin → Nodes → <your node> → Auto Deploy"
+    echo "    → Copy the command shown there and run it on this host."
+    echo "      It configures config.json and restarts the daemon."
+else
+    log "Node is configured and running."
+fi
+echo
+log "Useful commands:"
+echo "    systemctl status yuno-wings         # service status"
+echo "    journalctl -u yuno-wings -f          # live logs"
 echo
 if [ -n "$FQDN" ]; then
     log "In the panel, set this node to FQDN '${FQDN}', port ${PORT}, and enable 'Use HTTPS (TLS)'."
