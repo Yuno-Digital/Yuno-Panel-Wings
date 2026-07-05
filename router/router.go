@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os/exec"
 	"runtime"
 
 	"github.com/yuno/wings/config"
@@ -16,6 +17,9 @@ import (
 
 // Version is the daemon version, surfaced via /api/system.
 const Version = "0.5.0"
+
+// installScriptURL is fetched to self-update the daemon (see handleUpdate).
+const installScriptURL = "https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh"
 
 // Router holds the dependencies shared by all handlers.
 type Router struct {
@@ -33,6 +37,7 @@ func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
 	// Health check is intentionally unauthenticated.
 	mux.HandleFunc("GET /health", rt.handleHealth)
 	mux.Handle("GET /api/system", rt.auth(http.HandlerFunc(rt.handleSystem)))
+	mux.Handle("POST /api/update", rt.auth(http.HandlerFunc(rt.handleUpdate)))
 	mux.Handle("GET /api/servers/{uuid}", rt.auth(http.HandlerFunc(rt.handleServerStatus)))
 	mux.Handle("POST /api/servers/{uuid}", rt.auth(http.HandlerFunc(rt.handleCreate)))
 	mux.Handle("POST /api/servers/{uuid}/power", rt.auth(http.HandlerFunc(rt.handlePower)))
@@ -80,6 +85,25 @@ func (rt *Router) handleSystem(w http.ResponseWriter, r *http.Request) {
 		"memory_mb":      memoryMB,
 		"disk_mb":        diskMB,
 	})
+}
+
+// handleUpdate self-updates the daemon by re-running the installer (which pulls
+// the latest code, rebuilds the binary and restarts the service). It runs
+// out-of-band via systemd-run so the service restart at the end of the update
+// doesn't kill the updater (it lives in a separate cgroup). Returns immediately.
+func (rt *Router) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	script := "curl -fsSL " + installScriptURL + " | bash > /etc/yuno/update.log 2>&1"
+	cmd := exec.Command("systemd-run", "--collect", "--unit", "yuno-wings-update",
+		"/bin/sh", "-c", script)
+
+	if err := cmd.Run(); err != nil {
+		rt.log.Error("failed to start self-update", "error", err)
+		writeError(w, http.StatusInternalServerError, "could not start update: "+err.Error())
+		return
+	}
+
+	rt.log.Info("self-update started")
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "updating"})
 }
 
 // handleServerStatus returns the Docker state for a single server.
