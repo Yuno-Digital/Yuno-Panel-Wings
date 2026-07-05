@@ -167,6 +167,7 @@ Der Daemon lauscht standardmäßig auf `0.0.0.0:8090`.
 | `docker_prefix` | Präfix der Container-Namen (`yuno` → `yuno.<uuid>`) |
 | `disk_path` | Pfad zur Disk-Kapazitätserkennung |
 | `data_path` | Basisverzeichnis der Server-Volumes (Default `/var/lib/yuno/servers`) |
+| `backup_path` | Basisverzeichnis der Server-Backups (Default `/var/lib/yuno/backups`) |
 | `ssl_cert` / `ssl_key` | Pfade zu PEM-Zertifikat und -Key. Sind **beide** gesetzt, läuft die API über **HTTPS** statt HTTP |
 
 > `config.json` enthält das Secret und ist per `.gitignore` ausgeschlossen — niemals committen.
@@ -209,6 +210,10 @@ kurzlebigem JWT** authentifiziert (vom Panel mit dem Node-Token signiert).
 | GET  | `/api/servers/{uuid}/files/contents?path=…` | Datei lesen |
 | POST | `/api/servers/{uuid}/files/write` | Datei schreiben — Body `{path, contents}` |
 | POST | `/api/servers/{uuid}/files/delete` | Löschen — Body `{paths:[…]}` (rekursiv, Root geschützt) |
+| POST | `/api/servers/{uuid}/backups` | Backup erstellen — Body `{backup_uuid}`, liefert `{bytes, checksum}` |
+| GET  | `/api/servers/{uuid}/backups/{backup}/download` | Backup-Archiv (`.tar.gz`) streamen |
+| POST | `/api/servers/{uuid}/backups/{backup}/restore` | Backup ins Server-Verzeichnis zurückspielen |
+| DELETE | `/api/servers/{uuid}/backups/{backup}` | Backup-Archiv löschen |
 
 ### Beispiel
 

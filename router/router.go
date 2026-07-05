@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/yuno/wings/config"
+	"github.com/yuno/wings/internal/backups"
 	"github.com/yuno/wings/internal/docker"
 	"github.com/yuno/wings/internal/files"
 	"github.com/yuno/wings/internal/system"
@@ -52,6 +53,10 @@ func New(cfg *config.Config, dc *docker.Client, log *slog.Logger) http.Handler {
 	mux.Handle("GET /api/servers/{uuid}/files/contents", rt.auth(http.HandlerFunc(rt.handleFileRead)))
 	mux.Handle("POST /api/servers/{uuid}/files/write", rt.auth(http.HandlerFunc(rt.handleFileWrite)))
 	mux.Handle("POST /api/servers/{uuid}/files/delete", rt.auth(http.HandlerFunc(rt.handleFileDelete)))
+	mux.Handle("POST /api/servers/{uuid}/backups", rt.auth(http.HandlerFunc(rt.handleBackupCreate)))
+	mux.Handle("POST /api/servers/{uuid}/backups/{backup}/restore", rt.auth(http.HandlerFunc(rt.handleBackupRestore)))
+	mux.Handle("GET /api/servers/{uuid}/backups/{backup}/download", rt.auth(http.HandlerFunc(rt.handleBackupDownload)))
+	mux.Handle("DELETE /api/servers/{uuid}/backups/{backup}", rt.auth(http.HandlerFunc(rt.handleBackupDelete)))
 
 	return logRequests(log, mux)
 }
@@ -158,6 +163,60 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// backupRequest carries the panel-generated backup uuid used as the filename.
+type backupRequest struct {
+	UUID string `json:"backup_uuid"`
+}
+
+// handleBackupCreate tars the server's data dir into a new backup archive.
+func (rt *Router) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
+	uuid := r.PathValue("uuid")
+
+	var req backupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UUID == "" {
+		writeError(w, http.StatusBadRequest, "backup_uuid is required")
+		return
+	}
+
+	res, err := backups.Create(rt.cfg.DataPath, rt.cfg.Backups(), uuid, req.UUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// handleBackupDelete removes a backup archive.
+func (rt *Router) handleBackupDelete(w http.ResponseWriter, r *http.Request) {
+	if err := backups.Delete(rt.cfg.Backups(), r.PathValue("uuid"), r.PathValue("backup")); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// handleBackupRestore extracts a backup back into the server's data dir.
+func (rt *Router) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
+	if err := backups.Restore(rt.cfg.DataPath, rt.cfg.Backups(), r.PathValue("uuid"), r.PathValue("backup")); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "restored"})
+}
+
+// handleBackupDownload streams a backup archive.
+func (rt *Router) handleBackupDownload(w http.ResponseWriter, r *http.Request) {
+	backup := r.PathValue("backup")
+	path, err := backups.Path(rt.cfg.Backups(), r.PathValue("uuid"), backup)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "backup not found")
+		return
+	}
+	w.Header().Set("Content-Type", "application/gzip")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+backup+".tar.gz\"")
+	http.ServeFile(w, r, path)
 }
 
 // writeError writes a JSON error body.
