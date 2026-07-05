@@ -74,7 +74,7 @@ setup_tls() {
     [ -n "$DOMAIN" ] || return 0
 
     log "Installing certbot, jq and dig (for HTTPS)"
-    $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot jq >/dev/null 2>&1 || true
+    $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot jq >/dev/null 2>&1 || true
     command -v dig >/dev/null 2>&1 \
         || $SUDO apt-get install -y -qq bind9-dnsutils >/dev/null 2>&1 \
         || $SUDO apt-get install -y -qq dnsutils >/dev/null 2>&1 || true
@@ -133,7 +133,7 @@ fi
 # --- Base packages -----------------------------------------------------------
 log "Installing base packages (curl, git, ca-certificates)"
 $SUDO apt-get update -qq
-$SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git >/dev/null
+$SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git >/dev/null
 
 # --- Docker ------------------------------------------------------------------
 if command -v docker >/dev/null 2>&1; then
