@@ -6,7 +6,7 @@ token-authentifizierte HTTP-API bereit, über die das Panel die zugehörigen
 Docker-Container erstellt, steuert und überwacht. Inspiriert von
 [Pelican Wings](https://github.com/pelican-dev/wings), bewusst schlank gehalten.
 
-> Aktuelle Version: **1.0.0-alpha4**
+> Aktuelle Version: **1.0.0-alpha5**
 
 ## Funktionen
 
