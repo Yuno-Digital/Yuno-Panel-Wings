@@ -16,7 +16,7 @@ import (
 )
 
 // Version is the daemon version, surfaced via /api/system.
-const Version = "0.5.0"
+const Version = "1.0.0-alpha4"
 
 // installScriptURL is fetched to self-update the daemon (see handleUpdate).
 const installScriptURL = "https://raw.githubusercontent.com/Yuno-Digital/Yuno-Panel-Wings/main/install.sh"
