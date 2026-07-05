@@ -45,6 +45,8 @@ type Config struct {
 	DiskPath string `json:"disk_path"`
 	// DataPath is the base directory holding each server's files/volume.
 	DataPath string `json:"data_path"`
+	// BackupPath is the base directory where server backups are stored.
+	BackupPath string `json:"backup_path"`
 	// SSLCert and SSLKey point to a PEM certificate and private key. When both
 	// are set, the API is served over HTTPS instead of plain HTTP.
 	SSLCert string `json:"ssl_cert"`
@@ -61,7 +63,18 @@ func Default() *Config {
 		DockerPrefix: "yuno",
 		DiskPath:     "/",
 		DataPath:     "/var/lib/yuno/servers",
+		BackupPath:   "/var/lib/yuno/backups",
 	}
+}
+
+// Backups returns the configured backup directory, falling back to a sibling of
+// the data dir when unset (older config files).
+func (c *Config) Backups() string {
+	if c.BackupPath != "" {
+		return c.BackupPath
+	}
+
+	return "/var/lib/yuno/backups"
 }
 
 // Load reads the config file at path. If it does not exist, a default config is
