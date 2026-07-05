@@ -32,14 +32,15 @@ func main() {
 		return
 	}
 
-	cfg, created, err := config.Load(config.DefaultPath)
+	configPath := config.ResolvePath()
+	cfg, created, err := config.Load(configPath)
 	if err != nil {
 		log.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 	if created {
 		log.Info("wrote default config — review it and set your panel URL, then restart",
-			"path", config.DefaultPath, "token", cfg.Token)
+			"path", configPath, "token", cfg.Token)
 		return
 	}
 
