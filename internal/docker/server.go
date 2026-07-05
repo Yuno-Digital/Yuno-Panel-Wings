@@ -53,6 +53,7 @@ func (c *Client) Create(ctx context.Context, uuid string, spec CreateSpec) error
 	}
 
 	args := []string{"create", "--name", name, "-i", "-w", "/home/container", "--user", currentUser()}
+	args = append(args, c.dnsArgs()...)
 
 	if spec.MemoryMB > 0 {
 		args = append(args, "--memory", fmt.Sprintf("%dm", spec.MemoryMB))

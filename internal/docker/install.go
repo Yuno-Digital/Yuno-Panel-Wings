@@ -64,6 +64,7 @@ func (c *Client) Install(ctx context.Context, uuid string, spec CreateSpec, log 
 			"-v", scriptPath + ":/mnt/install.sh:ro",
 			"-w", "/mnt/server",
 		}
+		args = append(args, c.dnsArgs()...)
 		for key, value := range spec.Env {
 			args = append(args, "-e", key+"="+value)
 		}

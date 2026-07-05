@@ -15,11 +15,23 @@ import (
 type Client struct {
 	// Prefix is prepended to UUIDs to form container names.
 	Prefix string
+	// DNS resolvers passed to every container (install + run).
+	DNS []string
 }
 
 // New returns a Client that names containers "<prefix>.<uuid>".
-func New(prefix string) *Client {
-	return &Client{Prefix: prefix}
+func New(prefix string, dns []string) *Client {
+	return &Client{Prefix: prefix, DNS: dns}
+}
+
+// dnsArgs builds the "--dns X" flags for docker run/create.
+func (c *Client) dnsArgs() []string {
+	args := make([]string, 0, len(c.DNS)*2)
+	for _, d := range c.DNS {
+		args = append(args, "--dns", d)
+	}
+
+	return args
 }
 
 // containerName builds the Docker container name for a server UUID.
